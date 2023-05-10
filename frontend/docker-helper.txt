@@ -1,0 +1,2 @@
+docker build -t ecv1.0 .
+

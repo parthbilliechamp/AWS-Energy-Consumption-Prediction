@@ -1,0 +1,741 @@
+{
+  "Parameters": {
+    "AWSACCESSKEYID": {
+      "Type": "String",
+      "Default": "ASIAW6HJYSOW3SHLO4FK"
+    },
+    "AWSSECRETACCESSKEY": {
+      "Type": "String",
+      "Default": "8GFoqxxykLkQ0onDhPQBGixgHSV+KLBP9Duky11h"
+    },
+    "AWSSESSIONTOKEN": {
+      "Type": "String",
+      "Default": "FwoGZXIvYXdzEL///////////wEaDCQ6fBdyMzxYGROkCyLAAagHoTXQOrvM0ch3UhIGFLfaz0CqcTFBg1gK3tDeCfflLkZg12/GBHWjmOIGvQ1FYyDCzkLG/K7VnTrt0OGX396gxGCC0J/ofdBOINMOn3Kf6rfaosda4962UnaOOA4RrGI39clv9ZEYH5DW1vSQ1nh+zS1DkFcBb/OgyHFxvHPZ4bqOnCgIOw3ovmcxx+C9s3IeqiXKu+L2BVX6IuvgBrG2OZVuWT0rG9M1Au4ZObda2yjppGjOzDKy07nwqk1mgyj/9NGhBjItXXNgMe83Vfhexkc4f1uN38Jb/idnfZcGGJLXTLvtuXUopJ4wPctcP//Kubep"
+    },
+    "AWSREGIONNAME": {
+      "Type": "String",
+      "Default": "us-east-1"
+    }
+  },
+  "Resources": {
+    "UserPool": {
+      "Type": "AWS::Cognito::UserPool",
+      "Properties": {
+        "UserPoolName": "energy-consumption-user-pool",
+        "Policies": {
+          "PasswordPolicy": {
+            "MinimumLength": 8,
+            "RequireUppercase": true,
+            "RequireLowercase": true,
+            "RequireNumbers": true,
+            "RequireSymbols": true,
+            "TemporaryPasswordValidityDays": 0
+          }
+        },
+        "Schema": [
+          {
+            "Name": "sub",
+            "AttributeDataType": "String",
+            "DeveloperOnlyAttribute": false,
+            "Mutable": false,
+            "Required": true,
+            "StringAttributeConstraints": {
+              "MinLength": "1",
+              "MaxLength": "2048"
+            }
+          },
+          {
+            "Name": "email",
+            "AttributeDataType": "String",
+            "DeveloperOnlyAttribute": false,
+            "Mutable": true,
+            "Required": true,
+            "StringAttributeConstraints": {
+              "MinLength": "0",
+              "MaxLength": "2048"
+            }
+          }
+        ],
+        "AutoVerifiedAttributes": ["email"],
+        "UsernameAttributes": ["email"],
+        "AdminCreateUserConfig": {
+          "AllowAdminCreateUserOnly": false
+        },
+        "AccountRecoverySetting": {
+          "RecoveryMechanisms": [
+            {
+              "Name": "admin_only",
+              "Priority": 1
+            }
+          ]
+        },
+        "MfaConfiguration": "OFF",
+        "UsernameConfiguration": {
+          "CaseSensitive": false
+        },
+        "EmailConfiguration": {
+          "EmailSendingAccount": "COGNITO_DEFAULT"
+        },
+        "EmailVerificationSubject": "Your verification code"
+      }
+    },
+    "UserPoolClient": {
+      "Type": "AWS::Cognito::UserPoolClient",
+      "DependsOn": "UserPool",
+      "Properties": {
+        "ClientName": "energy-consumption-app-client",
+        "UserPoolId": { "Ref": "UserPool" },
+        "ExplicitAuthFlows": [
+          "ALLOW_USER_SRP_AUTH",
+          "ALLOW_REFRESH_TOKEN_AUTH",
+          "ALLOW_CUSTOM_AUTH"
+        ],
+        "RefreshTokenValidity": 30,
+        "GenerateSecret": false
+      }
+    },
+    "energyconsumptionhistorytable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "KeyIndex",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "DateAndTime",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "KeyIndex",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "DateAndTime",
+            "KeyType": "RANGE"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": 5,
+          "WriteCapacityUnits": 5
+        },
+        "TableName": "energyconsumptionhistorytable",
+        "ImportSourceSpecification": {
+          "S3BucketSource": {
+            "S3Bucket": "energyconsumptionhistory",
+            "S3KeyPrefix": "energy_consumption_per_hour.csv"
+          },
+          "InputFormat": "CSV"
+        }
+      }
+    },
+    "predictiontable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "KeyIndex",
+            "AttributeType": "S"
+          },
+          {
+            "AttributeName": "DateAndTime",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "KeyIndex",
+            "KeyType": "HASH"
+          },
+          {
+            "AttributeName": "DateAndTime",
+            "KeyType": "RANGE"
+          }
+        ],
+        "ProvisionedThroughput": {
+          "ReadCapacityUnits": "5",
+          "WriteCapacityUnits": "5"
+        },
+        "TableName": "predictiontable",
+        "ImportSourceSpecification": {
+          "S3BucketSource": {
+            "S3Bucket": "energyconsumptionhistory",
+            "S3KeyPrefix": "energy_consumption_per_hour_prediction.csv"
+          },
+          "InputFormat": "CSV"
+        }
+      }
+    },
+    "ViewHistoricalRecordsFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "energyconsumptionhistory",
+          "S3Key": "viewpastrecords.zip"
+        },
+        "FunctionName": "ViewHistoricalRecordsFunction",
+        "Handler": "FetchPastRecords.lambda_handler",
+        "Role": "arn:aws:iam::477231616941:role/LabRole",
+        "Runtime": "python3.9",
+        "Timeout": 25,
+        "TracingConfig": {
+          "Mode": "Active"
+        },
+        "Layers": [
+          "arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python39:4"
+        ],
+        "Environment": {
+          "Variables": {
+            "LOG_GROUP_NAME": "/aws/lambda/ViewHistoricalRecordsFunction",
+            "LOG_STREAM_NAME": "/aws/lambda/ViewHistoricalRecordsFunction",
+            "AWSACCESSKEYID": { "Ref": "AWSACCESSKEYID" },
+            "AWSSECRETACCESSKEY": { "Ref": "AWSSECRETACCESSKEY" },
+            "AWSSESSIONTOKEN": { "Ref": "AWSSESSIONTOKEN" },
+            "AWSREGIONNAME": { "Ref": "AWSREGIONNAME" }
+          }
+        }
+      }
+    },
+    "ViewPredictionFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": "energyconsumptionhistory",
+          "S3Key": "viewprediction.zip"
+        },
+        "FunctionName": "ViewPredictionFunction",
+        "Handler": "GetPredictionData.lambda_handler",
+        "Role": "arn:aws:iam::477231616941:role/LabRole",
+        "Runtime": "python3.9",
+        "Timeout": 25,
+        "TracingConfig": {
+          "Mode": "Active"
+        },
+        "Layers": [
+          "arn:aws:lambda:us-east-1:336392948345:layer:AWSSDKPandas-Python39:4"
+        ],
+        "Environment": {
+          "Variables": {
+            "LOG_GROUP_NAME": "/aws/lambda/ViewPredictionFunction",
+            "LOG_STREAM_NAME": "/aws/lambda/ViewPredictionFunction",
+            "AWSACCESSKEYID": { "Ref": "AWSACCESSKEYID" },
+            "AWSSECRETACCESSKEY": { "Ref": "AWSSECRETACCESSKEY" },
+            "AWSSESSIONTOKEN": { "Ref": "AWSSESSIONTOKEN" },
+            "AWSREGIONNAME": { "Ref": "AWSREGIONNAME" }
+          }
+        }
+      }
+    },
+    "LambdaViewHistoricalRecordsFunctionLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "DependsOn": ["ViewHistoricalRecordsFunction", "ViewPredictionFunction"],
+      "Properties": {
+        "LogGroupName": "/aws/lambda/ViewHistoricalRecordsFunction"
+      }
+    },
+    "LambdaViewPredictionFunctionLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "DependsOn": "ViewPredictionFunction",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/ViewPredictionFunction"
+      }
+    },
+    "reactdockerapp": {
+      "Type": "AWS::ElasticBeanstalk::Application",
+      "Properties": {
+        "ApplicationName": "reactdockerapp",
+        "Description": "AWS Elastic Beanstalk Sample Application"
+      }
+    },
+    "reactdockerappVersion": {
+      "Type": "AWS::ElasticBeanstalk::ApplicationVersion",
+      "Properties": {
+        "ApplicationName": {
+          "Ref": "reactdockerapp"
+        },
+        "Description": "AWS ElasticBeanstalk reactdockerapp Version",
+        "SourceBundle": {
+          "S3Bucket": "energyconsumptionhistory",
+          "S3Key": "ecv1.0.zip"
+        }
+      }
+    },
+    "reactdockerappTemplate": {
+      "Type": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "DependsOn": "UserPool",
+      "Properties": {
+        "ApplicationName": {
+          "Ref": "reactdockerapp"
+        },
+        "Description": "AWS ElasticBeanstalk Sample Configuration Template",
+        "OptionSettings": [
+          {
+            "Namespace": "aws:ec2:instances",
+            "OptionName": "InstanceTypes",
+            "Value": "t3.micro,t3.small"
+          },
+          {
+            "Namespace": "aws:autoscaling:launchconfiguration",
+            "OptionName": "IamInstanceProfile",
+            "Value": "LabInstanceProfile"
+          },
+          {
+            "Namespace": "aws:elasticbeanstalk:environment",
+            "OptionName": "ServiceRole",
+            "Value": "arn:aws:iam::477231616941:role/LabRole"
+          },
+          {
+            "Namespace": "aws:elasticbeanstalk:application:environment",
+            "OptionName": "REACT_APP_USER_POOL_ID",
+            "Value": { "Ref": "UserPool" }
+          },
+          {
+            "Namespace": "aws:elasticbeanstalk:application:environment",
+            "OptionName": "REACT_APP_USER_POOL_CLIENT_ID",
+            "Value": { "Ref": "UserPoolClient" }
+          },
+          {
+            "Namespace": "aws:elasticbeanstalk:application:environment",
+            "OptionName": "REACT_APP_ADMIN_BACKEND_URL",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "http://",
+                  "energyconsumptionmanagment",
+                  ".",
+                  { "Ref": "AWS::Region" },
+                  ".elasticbeanstalk.com/"
+                ]
+              ]
+            }
+          },
+          {
+            "Namespace": "aws:elasticbeanstalk:application:environment",
+            "OptionName": "REACT_APP_BACKEND_URL",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  {
+                    "Ref": "energyconsumptionapi"
+                  },
+                  ".execute-api.",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ".amazonaws.com/prod/"
+                ]
+              ]
+            }
+          }
+        ],
+        "SolutionStackName": "64bit Amazon Linux 2 v3.5.6 running Docker"
+      }
+    },
+    "reactdockerappEnvironment": {
+      "Type": "AWS::ElasticBeanstalk::Environment",
+      "Properties": {
+        "ApplicationName": {
+          "Ref": "reactdockerapp"
+        },
+        "EnvironmentName": "reactdockerappenv",
+        "Description": "AWS ElasticBeanstalk Sample Environment",
+        "TemplateName": {
+          "Ref": "reactdockerappTemplate"
+        },
+        "VersionLabel": {
+          "Ref": "reactdockerappVersion"
+        }
+      }
+    },
+    "pythondockerapp": {
+      "Type": "AWS::ElasticBeanstalk::Application",
+      "Properties": {
+        "ApplicationName": "pythondockerapp",
+        "Description": "AWS Elastic Beanstalk Sample Application"
+      }
+    },
+    "pythondockerappVersion": {
+      "Type": "AWS::ElasticBeanstalk::ApplicationVersion",
+      "Properties": {
+        "ApplicationName": {
+          "Ref": "pythondockerapp"
+        },
+        "Description": "AWS ElasticBeanstalk pythondockerapp Version",
+        "SourceBundle": {
+          "S3Bucket": "energyconsumptionhistory",
+          "S3Key": "ecmlv1.0.zip"
+        }
+      }
+    },
+    "pythondockerappTemplate": {
+      "Type": "AWS::ElasticBeanstalk::ConfigurationTemplate",
+      "Properties": {
+        "ApplicationName": {
+          "Ref": "pythondockerapp"
+        },
+        "Description": "AWS ElasticBeanstalk Sample Configuration Template",
+        "OptionSettings": [
+          {
+            "Namespace": "aws:ec2:instances",
+            "OptionName": "InstanceTypes",
+            "Value": "t3.micro,t3.small"
+          },
+          {
+            "Namespace": "aws:autoscaling:launchconfiguration",
+            "OptionName": "IamInstanceProfile",
+            "Value": "LabInstanceProfile"
+          },
+          {
+            "Namespace": "aws:elasticbeanstalk:environment",
+            "OptionName": "ServiceRole",
+            "Value": "arn:aws:iam::477231616941:role/LabRole"
+          },
+          {
+            "Namespace": "aws:elasticbeanstalk:application:environment",
+            "OptionName": "AWSACCESSKEYID",
+            "Value": { "Ref": "AWSACCESSKEYID" }
+          },
+          {
+            "Namespace": "aws:elasticbeanstalk:application:environment",
+            "OptionName": "AWSSECRETACCESSKEY",
+            "Value": { "Ref": "AWSSECRETACCESSKEY" }
+          },
+          {
+            "Namespace": "aws:elasticbeanstalk:application:environment",
+            "OptionName": "AWSSESSIONTOKEN",
+            "Value": { "Ref": "AWSSESSIONTOKEN" }
+          },
+          {
+            "Namespace": "aws:elasticbeanstalk:application:environment",
+            "OptionName": "AWSREGIONNAME",
+            "Value": { "Ref": "AWSREGIONNAME" }
+          }
+        ],
+        "SolutionStackName": "64bit Amazon Linux 2 v3.5.6 running Docker"
+      }
+    },
+    "pythondockerappEnvironment": {
+      "Type": "AWS::ElasticBeanstalk::Environment",
+      "Properties": {
+        "ApplicationName": {
+          "Ref": "pythondockerapp"
+        },
+        "CNAMEPrefix": "energyconsumptionmanagment",
+        "EnvironmentName": "pythondockerappenv",
+        "Description": "AWS ElasticBeanstalk Sample Environment",
+        "TemplateName": {
+          "Ref": "pythondockerappTemplate"
+        },
+        "VersionLabel": {
+          "Ref": "pythondockerappVersion"
+        }
+      }
+    },
+    "energyconsumptionapi": {
+      "Type": "AWS::ApiGateway::RestApi",
+      "DependsOn": "ViewHistoricalRecordsFunction",
+      "Properties": {
+        "Name": "energyconsumptionapi",
+        "EndpointConfiguration": {
+          "Types": ["REGIONAL"]
+        }
+      }
+    },
+    "PastRecordsResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "energyconsumptionapi"
+        },
+        "ParentId": {
+          "Fn::GetAtt": ["energyconsumptionapi", "RootResourceId"]
+        },
+        "PathPart": "pastrecords"
+      }
+    },
+    "GetPastRecordsMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "GET",
+        "ResourceId": {
+          "Ref": "PastRecordsResource"
+        },
+        "RestApiId": {
+          "Ref": "energyconsumptionapi"
+        },
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:apigateway:",
+                { "Ref": "AWS::Region" },
+                ":lambda:path/2015-03-31/functions/",
+                { "Fn::GetAtt": ["ViewHistoricalRecordsFunction", "Arn"] },
+                "/invocations"
+              ]
+            ]
+          },
+          "IntegrationResponses": [
+            {
+              "StatusCode": 200,
+              "ResponseTemplates": {
+                "application/json": ""
+              }
+            }
+          ]
+        }
+      }
+    },
+    "PredictionResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "energyconsumptionapi"
+        },
+        "ParentId": {
+          "Fn::GetAtt": ["energyconsumptionapi", "RootResourceId"]
+        },
+        "PathPart": "prediction"
+      }
+    },
+    "GetPredictionMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "GET",
+        "ResourceId": {
+          "Ref": "PredictionResource"
+        },
+        "RestApiId": {
+          "Ref": "energyconsumptionapi"
+        },
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "AWS_PROXY",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "arn:aws:apigateway:",
+                { "Ref": "AWS::Region" },
+                ":lambda:path/2015-03-31/functions/",
+                { "Fn::GetAtt": ["ViewPredictionFunction", "Arn"] },
+                "/invocations"
+              ]
+            ]
+          },
+          "IntegrationResponses": [
+            {
+              "StatusCode": 200,
+              "ResponseTemplates": {
+                "application/json": ""
+              }
+            }
+          ]
+        }
+      }
+    },
+    "TrainModelResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "energyconsumptionapi"
+        },
+        "ParentId": {
+          "Fn::GetAtt": ["energyconsumptionapi", "RootResourceId"]
+        },
+        "PathPart": "trainmodel"
+      }
+    },
+    "TrainModelMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "DependsOn": ["pythondockerappEnvironment"],
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "GET",
+        "ResourceId": {
+          "Ref": "TrainModelResource"
+        },
+        "RestApiId": {
+          "Ref": "energyconsumptionapi"
+        },
+        "Integration": {
+          "IntegrationHttpMethod": "GET",
+          "Type": "HTTP",
+          "PassthroughBehavior": "WHEN_NO_MATCH",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "http://",
+                "energyconsumptionmanagment",
+                ".",
+                { "Ref": "AWS::Region" },
+                ".elasticbeanstalk.com/trainmodel"
+              ]
+            ]
+          }
+        }
+      }
+    },
+    "PerformPredictionResource": {
+      "Type": "AWS::ApiGateway::Resource",
+      "Properties": {
+        "RestApiId": {
+          "Ref": "energyconsumptionapi"
+        },
+        "ParentId": {
+          "Fn::GetAtt": ["energyconsumptionapi", "RootResourceId"]
+        },
+        "PathPart": "performprediction"
+      }
+    },
+    "PerformPredictionMethod": {
+      "Type": "AWS::ApiGateway::Method",
+      "DependsOn": ["pythondockerappEnvironment"],
+      "Properties": {
+        "AuthorizationType": "NONE",
+        "HttpMethod": "POST",
+        "ResourceId": {
+          "Ref": "PerformPredictionResource"
+        },
+        "RestApiId": {
+          "Ref": "energyconsumptionapi"
+        },
+        "Integration": {
+          "IntegrationHttpMethod": "POST",
+          "Type": "HTTP",
+          "Uri": {
+            "Fn::Join": [
+              "",
+              [
+                "http://",
+                "energyconsumptionmanagment",
+                ".",
+                { "Ref": "AWS::Region" },
+                ".elasticbeanstalk.com/performprediction"
+              ]
+            ]
+          },
+          "PassthroughBehavior": "WHEN_NO_MATCH",
+          "RequestTemplates": {
+            "application/json": "{\"body\": $input.json('$')}"
+          }
+        }
+      }
+    },
+    "ApiGatewayModel": {
+      "Type": "AWS::ApiGateway::Model",
+      "Properties": {
+        "ContentType": "application/json",
+        "RestApiId": {
+          "Ref": "energyconsumptionapi"
+        },
+        "Schema": {}
+      }
+    },
+    "Deployment": {
+      "Type": "AWS::ApiGateway::Deployment",
+      "DependsOn": ["GetPastRecordsMethod", "GetPredictionMethod"],
+      "Properties": {
+        "RestApiId": {
+          "Ref": "energyconsumptionapi"
+        },
+        "StageName": "prod"
+      }
+    },
+    "ViewHistoricalRecordsPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "ViewHistoricalRecordsFunction"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Sub": "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${energyconsumptionapi}/*/GET/pastrecords"
+        }
+      }
+    },
+    "ViewPredictionPermission": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "Action": "lambda:InvokeFunction",
+        "FunctionName": {
+          "Ref": "ViewPredictionFunction"
+        },
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Sub": "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${energyconsumptionapi}/*/GET/prediction"
+        }
+      }
+    },
+    "Firehose": {
+      "Type": "AWS::KinesisFirehose::DeliveryStream",
+      "DependsOn": ["energyconsumptionapi"],
+      "Properties": {
+        "DeliveryStreamName": "energyconsumptionstream",
+        "DeliveryStreamType": "DirectPut",
+        "S3DestinationConfiguration": {
+          "BucketARN": "arn:aws:s3:::energyconsumptionhistory",
+          "BufferingHints": {
+            "IntervalInSeconds": 60,
+            "SizeInMBs": 1
+          },
+          "CompressionFormat": "UNCOMPRESSED",
+          "Prefix": "firehose/",
+          "RoleARN": "arn:aws:iam::477231616941:role/LabRole",
+          "CloudWatchLoggingOptions": {
+            "Enabled": true,
+            "LogGroupName": "deliverystream",
+            "LogStreamName": "s3Backup"
+          }
+        }
+      }      
+    }
+  },
+  "Outputs": {
+    "ViewHistoricalRecordsFunctionArn": {
+      "Value": { "Fn::GetAtt": ["ViewHistoricalRecordsFunction", "Arn"] }
+    },
+    "ViewPredictionFunctionArn": {
+      "Value": { "Fn::GetAtt": ["ViewPredictionFunction", "Arn"] }
+    },
+    "ApiURL": {
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "https://",
+            {
+              "Ref": "energyconsumptionapi"
+            },
+            ".execute-api.",
+            {
+              "Ref": "AWS::Region"
+            },
+            ".amazonaws.com/prod/"
+          ]
+        ]
+      }
+    },
+    "UserPoolClientId": {
+      "Value": { "Ref": "UserPoolClient" }
+    },
+    "UserPoolId": {
+      "Value": { "Ref": "UserPool" }
+    },
+    "FirehoseARN": {
+      "Value": { "Fn::GetAtt": ["Firehose", "Arn"] }
+    }
+  }
+}
