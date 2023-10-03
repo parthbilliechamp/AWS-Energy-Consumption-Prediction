@@ -89,7 +89,8 @@ A CI/CD pipeline has been configured for deploying the React-based frontend appl
 - A detailed project report can be read [here](https://docs.google.com/document/d/1-6qlu3XNkQT7XkazuPjzOuEkMDLxiy3UfEnl5Bef-pM/edit)
 
 
-# Author: 👤 **Parth Champaneria**
+# Author
+- 👤 **Parth Champaneria**
 
 # Show your support
 
