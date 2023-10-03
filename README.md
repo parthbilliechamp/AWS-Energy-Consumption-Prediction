@@ -11,16 +11,12 @@
 - [Project Architecture](#project-architecture)
 - [Tools and Technologies used](#tools)
 - [Services used](#services-used)
-  - [User Authentication and Authorization](#User-Authentication-and-Authorization)
-  - [User Profile Management](#User-Profile-Management)
-  - [Game LeaderBoard](#Game-LeaderBoard)
-  - [Team Management](#Team-Management)
-  - [Chat Bot for Virtual assistance](#Chat-Bot-for-Virtual-assistance)
-  - [Admin Dashboard](#Admin-Dashboard)
-  - [Game Module](#Game-Module)
-  - [Notifications and Alerts](#Notifications-and-Alerts)
+  - [Compute Services used](#Compute-Services-used)
+  - [Storage Services used](#Storage-Services-used)
+  - [Network Services used](#Network-Services-used)
 - [Deployment Pipeline](#deployment-pipeline)
 - [Project Demo](#project-demo)
+- [Project Report](#project-report)
 - [Author: 👤 **Parth Champaneria**](#author--parth-champaneria)
 - [Show your support](#show-your-support)
 
@@ -86,7 +82,11 @@ A CI/CD pipeline has been configured for deploying the React-based frontend appl
 
 # Project Demo
 
-- The project demo can be viewed [here](https://projects-mediahouse.s3.amazonaws.com/trivia-serverless/demo.mp4)
+- The project demo can be viewed [here](https://drive.google.com/file/d/1gcb9FPrV6ZqXAU8m8n28lfnay-v5ou8U/view)
+
+# Project Report
+
+- A detailed project report can be read [here](https://docs.google.com/document/d/1-6qlu3XNkQT7XkazuPjzOuEkMDLxiy3UfEnl5Bef-pM/edit)
 
 
 # Author: 👤 **Parth Champaneria**
