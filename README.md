@@ -4,7 +4,7 @@
 ## AWS Cloud-based web application that predicts household energy consumption based on a Machine Learning model.
 
 <p align="center">
-<img width="640px"  src="https://parthchampaneria-portfolio.s3.amazonaws.com/triviahomepage.png" alt="">
+<img width="640px"  src="https://projects-mediahouse.s3.amazonaws.com/energy-consumption-aws/energy-consumption-homepage.png" alt="">
 <p>
 
 - [Introduction & Goals](#introduction--goals)
