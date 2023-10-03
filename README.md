@@ -30,7 +30,7 @@ The main goal of this project is to provide users with accurate predictions of h
 # Project architecture
 
 <p align="center">
-<img width="720px"  src="https://projects-mediahouse.s3.amazonaws.com/trivia-serverless/architecture.png" alt="">
+<img width="720px"  src="https://projects-mediahouse.s3.amazonaws.com/energy-consumption-aws/ec-architecture.png" alt="">
 <p>
 
 
